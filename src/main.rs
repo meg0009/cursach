@@ -636,7 +636,195 @@ impl Cube {
             x_0: x0,
             size: size,
             size_edge: size_edge,
-            mesh: Mesh::new(poly).set_normal_vertex(),
+            mesh: Mesh::new(poly)/*.set_normal_vertex()*/,
+        }
+    }
+
+    fn new_threads(x0: na::Vector3<f64>, size: f64, size_edge: usize) -> Self {
+        use std::thread as thd;
+
+        static NORM_ABCD: na::Vector3<f64> = na::vector![0., 0., -1.];
+        static NORM_A2B2C2D2: na::Vector3<f64> = na::vector![0., 0., 1.];
+        static NORM_AA2D2D: na::Vector3<f64> = na::vector![1., 0., 0.];
+        static NORM_BB2C2C: na::Vector3<f64> = na::vector![-1., 0., 0.];
+        static NORM_AA2B2B: na::Vector3<f64> = na::vector![0., -1., 0.];
+        static NORM_DD2C2C: na::Vector3<f64> = na::vector![0., 1., 0.];
+
+        let dl = size / 2.;
+        let a = x0 + na::vector![dl, -dl, -dl];
+        let b = x0 + na::vector![-dl, -dl, -dl];
+        let c = x0 + na::vector![-dl, dl, -dl];
+        let d = x0 + na::vector![dl, dl, -dl];
+        let a2 = x0 + na::vector![dl, -dl, dl];
+        let b2 = x0 + na::vector![-dl, -dl, dl];
+        let c2 = x0 + na::vector![-dl, dl, dl];
+        let d2 = x0 + na::vector![dl, dl, dl];
+        let mut poly = Vec::with_capacity(size_edge * size_edge * 6 * 2);
+        let dl = size / size_edge as f64;
+        let mut threads = Vec::new();
+        for i in 0..size_edge {
+            let i = i;
+            threads.push(thd::spawn(move || {
+                let mut poly = Vec::new();
+                for j in 0..size_edge {
+                    //abcd
+                    let x0 = b + na::vector![dl * i as f64, dl * j as f64, 0.];
+                    poly.push(Polygon::new_all(
+                        NORM_ABCD,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![dl, 0., 0.],
+                            x0 + na::vector![dl, dl, 0.],
+                        ),
+                        NORM_ABCD,
+                        NORM_ABCD,
+                        NORM_ABCD,
+                    ));
+                    poly.push(Polygon::new_all(
+                        NORM_ABCD,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., dl, 0.],
+                            x0 + na::vector![dl, dl, 0.],
+                        ),
+                        NORM_ABCD,
+                        NORM_ABCD,
+                        NORM_ABCD,
+                    ));
+                    //a2b2c2d2
+                    let x0 = b2 + na::vector![dl * i as f64, dl * j as f64, 0.];
+                    poly.push(Polygon::new_all(
+                        NORM_A2B2C2D2,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![dl, 0., 0.],
+                            x0 + na::vector![dl, dl, 0.],
+                        ),
+                        NORM_A2B2C2D2,
+                        NORM_A2B2C2D2,
+                        NORM_A2B2C2D2,
+                    ));
+                    poly.push(Polygon::new_all(
+                        NORM_A2B2C2D2,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., dl, 0.],
+                            x0 + na::vector![dl, dl, 0.],
+                        ),
+                        NORM_A2B2C2D2,
+                        NORM_A2B2C2D2,
+                        NORM_A2B2C2D2,
+                    ));
+                    //aa2d2d
+                    let x0 = a + na::vector![0., dl * i as f64, dl * j as f64];
+                    poly.push(Polygon::new_all(
+                        NORM_AA2D2D,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., dl, 0.],
+                            x0 + na::vector![0., dl, dl],
+                        ),
+                        NORM_AA2D2D,
+                        NORM_AA2D2D,
+                        NORM_AA2D2D,
+                    ));
+                    poly.push(Polygon::new_all(
+                        NORM_AA2D2D,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., 0., dl],
+                            x0 + na::vector![0., dl, dl],
+                        ),
+                        NORM_AA2D2D,
+                        NORM_AA2D2D,
+                        NORM_AA2D2D,
+                    ));
+                    //bb2c2c
+                    let x0 = b + na::vector![0., dl * i as f64, dl * j as f64];
+                    poly.push(Polygon::new_all(
+                        NORM_BB2C2C,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., dl, 0.],
+                            x0 + na::vector![0., dl, dl],
+                        ),
+                        NORM_BB2C2C,
+                        NORM_BB2C2C,
+                        NORM_BB2C2C,
+                    ));
+                    poly.push(Polygon::new_all(
+                        NORM_BB2C2C,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., 0., dl],
+                            x0 + na::vector![0., dl, dl],
+                        ),
+                        NORM_BB2C2C,
+                        NORM_BB2C2C,
+                        NORM_BB2C2C,
+                    ));
+                    //aa2b2b
+                    let x0 = b + na::vector![dl * i as f64, 0., dl * j as f64];
+                    poly.push(Polygon::new_all(
+                        NORM_AA2B2B,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![dl, 0., 0.],
+                            x0 + na::vector![dl, 0., dl],
+                        ),
+                        NORM_AA2B2B,
+                        NORM_AA2B2B,
+                        NORM_AA2B2B,
+                    ));
+                    poly.push(Polygon::new_all(
+                        NORM_AA2B2B,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., 0., dl],
+                            x0 + na::vector![dl, 0., dl],
+                        ),
+                        NORM_AA2B2B,
+                        NORM_AA2B2B,
+                        NORM_AA2B2B,
+                    ));
+                    //dd2c2c
+                    let x0 = c + na::vector![dl * i as f64, 0., dl * j as f64];
+                    poly.push(Polygon::new_all(
+                        NORM_DD2C2C,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![dl, 0., 0.],
+                            x0 + na::vector![dl, 0., dl],
+                        ),
+                        NORM_DD2C2C,
+                        NORM_DD2C2C,
+                        NORM_DD2C2C,
+                    ));
+                    poly.push(Polygon::new_all(
+                        NORM_DD2C2C,
+                        Triangle::new(
+                            x0,
+                            x0 + na::vector![0., 0., dl],
+                            x0 + na::vector![dl, 0., dl],
+                        ),
+                        NORM_DD2C2C,
+                        NORM_DD2C2C,
+                        NORM_DD2C2C,
+                    ));
+                }
+                poly
+            }));
+            let size = threads.len();
+            for _ in 0..size {
+                let mut r = threads.pop().unwrap().join().unwrap();
+                poly.append(&mut r);
+            }
+        }
+        Cube {
+            x_0: x0,
+            size: size,
+            size_edge: size_edge,
+            mesh: Mesh::new(poly)/*.set_normal_vertex()*/,
         }
     }
 
@@ -686,13 +874,108 @@ impl Cube {
             //println!("{:?}", new_triangle);
             res.push(Polygon::new(&ZEROS, new_triangle));
         }
-        Mesh::new(res).set_normal_vertex()
+        Mesh::new(res)/*.set_normal_vertex()*/
     }
 
     fn run_threads(&self, mesh: &Mesh) -> Mesh {
         use std::thread as thd;
+        use std::os::unix::thread::JoinHandleExt;
         //let mut res = Vec::with_capacity(self.size_edge * self.size_edge * 6 * 2);
         let mut m = self.mesh.mesh.clone();
+        let mut m_vec = Vec::new();
+        let sss = 3 * 3 * 6 * 2;
+        while !m.is_empty() {
+            m_vec.push(m.split_off(sss));
+            if m.len() - sss < sss {
+                m_vec.push(m.clone());
+                m.clear();
+            }
+        }
+
+        let size = m_vec.len();
+
+        let arc = std::sync::Arc::new(mesh.mesh.clone());
+        let mut arc_vec = Vec::new();
+
+        for _ in 0..size {
+            arc_vec.push(arc.clone());
+        }
+
+        println!("{}", size);
+        let mut threads = Vec::new();
+        let mut chanel = Vec::new();
+        for i in 0..size {
+            let (sender, receiver) = std::sync::mpsc::channel();
+            chanel.push(receiver);
+            let arc = arc_vec.pop().unwrap();
+            //let arc = mesh.mesh.clone();
+            let m = m_vec.pop().unwrap();
+            threads.push(thd::Builder::new().name(format!("pthread_th{}_np", i)).spawn(move || {
+                let mesh = arc.clone();
+                let mut res = Vec::with_capacity(m.len());
+                for p in m.iter() {
+                    let (triangle, poly) = Self::found_triangle_thd(&p, &mesh).unwrap();
+                    //println!("===============================================================");
+                    //println!("{:?}", triangle);
+                    //println!("===============================================================");
+                    //println!("{:?}", poly.triangle);
+                    let local_poly = LocalPolygon::from(&poly);
+                    let points = local_poly.get_points();
+                    let u = U::from(&local_poly);
+                    let local_triangle = Triangle::new(
+                        local_poly.get_local_point(triangle.x),
+                        local_poly.get_local_point(triangle.y),
+                        local_poly.get_local_point(triangle.z),
+                    );
+                    //println!("===============================================================");
+                    //println!("{:?}", local_triangle);
+                    let new_local_triangle = Triangle::new(
+                        na::vector![
+                            local_triangle.x[0],
+                            local_triangle.x[1],
+                            gamma(local_triangle.x[0], local_triangle.x[1], &points, &u)
+                        ],
+                        na::vector![
+                            local_triangle.y[0],
+                            local_triangle.y[1],
+                            gamma(local_triangle.y[0], local_triangle.y[1], &points, &u)
+                        ],
+                        na::vector![
+                            local_triangle.z[0],
+                            local_triangle.z[1],
+                            gamma(local_triangle.z[0], local_triangle.z[1], &points, &u)
+                        ],
+                    );
+                    //println!("new ===============================================================");
+                    //println!("{:?}", new_local_triangle);
+                    let new_triangle = Triangle::new(
+                        local_poly.get_from_local(new_local_triangle.x),
+                        local_poly.get_from_local(new_local_triangle.y),
+                        local_poly.get_from_local(new_local_triangle.z),
+                    );
+                    //println!("new +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+                    //println!("{:?}", new_triangle);
+                    res.push(Polygon::new(&ZEROS, new_triangle));
+                }
+                sender.send(res).unwrap();
+            }).unwrap().into_pthread_t())
+        }
+
+        let mut res = Vec::new();
+
+        for i in 0..size {
+            //println!("{:?}", threads[size - i - 1].thread().name());
+            /*let mut r = threads.pop().unwrap().join().unwrap();
+            res.append(&mut r);*/
+            let mut r = chanel.pop().unwrap().recv().unwrap();
+            unsafe {
+                println!("{}", threads[i]);
+                libc::pthread_join(threads[i], std::ptr::null_mut());
+            }
+            res.append(&mut r);
+        }
+
+        /*let mut m = self.mesh.mesh.clone();
         let mut m1 = m.split_off(m.len() / 4);
         let mut m2 = m.split_off(m.len() / 4);
         let mut m3 = m.split_off(m.len() / 4);
@@ -913,9 +1196,9 @@ impl Cube {
         res.append(&mut m);
         res.append(&mut m1);
         res.append(&mut m2);
-        res.append(&mut m3);
+        res.append(&mut m3);*/
 
-        Mesh::new(res).set_normal_vertex()
+        Mesh::new(res)/*.set_normal_vertex()*/
     }
 
     fn found_triangle(poly: &Polygon, oldmesh: &Mesh) -> Option<(Triangle, Polygon)> {
@@ -1052,9 +1335,13 @@ fn main() {
     )
     .unwrap();*/
 
-    let cube = Cube::new(ZEROS, 1., 20);
-    //let res = cube.run(&mesh);
-    let res = cube.run_threads(&mesh);
+    println!("make cube");
+    let cube = Cube::new(ZEROS, 1., 1000);
+    //let cube = Cube::new_threads(ZEROS, 1., 2000);
+    println!("start run");
+    let res = cube.run(&mesh);
+    //let res = cube.run_threads(&mesh);
+    println!("end run");
 
     let mut out_file = File::create("../cube.stl").unwrap();
     stl_io::write_stl(
