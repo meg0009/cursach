@@ -58,11 +58,22 @@ impl Polygon {
         nx *= d;
         ny *= d;
         nz *= d;*/
-        /*let a = triangle.x - triangle.y;
-        let b = triangle.x - triangle.z;
+        let a = triangle.y - triangle.x;
+        let b = triangle.z - triangle.x;
         let mut n = a.cross(&b);
+        n /= n.norm();
+        let c = triangle.get_center();
+        if n[0].signum() != c[0].signum() {
+            n *= -1.;
+        }
+        /*let mut n = (triangle.x + triangle.y + triangle.z) / 3.;
         n /= n.norm();*/
-        let mut n = (triangle.x + triangle.y + triangle.z) / 3.;
+        /*let a = ((triangle.x + triangle.y) / 2. + triangle.z / 3.) * 2. / 3.;
+        let b = ((triangle.y + triangle.z) / 2. + triangle.x / 3.) * 2. / 3.;
+        let c = ((triangle.x + triangle.z) / 2. + triangle.y / 3.) * 2. / 3.;
+        let aa = a - b;
+        let bb = a - c;
+        let mut n = aa.cross(&bb);*/
         n /= n.norm();
         //println!("{:?}", n);
         /*Polygon {
@@ -1316,6 +1327,13 @@ impl Cube {
     }
 }
 
+enum InOrOut {
+    //находится в зоне 1
+    In(na::Vector1<f64>),
+    //находится в зоне 2
+    Out(na::Vector1<f64>),
+}
+
 fn main() {
     let mut in_file = File::open("../123.stl").unwrap();
     let stl = stl_io::read_stl(&mut in_file).unwrap();
@@ -1336,7 +1354,7 @@ fn main() {
     .unwrap();*/
 
     println!("make cube");
-    let cube = Cube::new(ZEROS, 1., 1000);
+    let cube = Cube::new(ZEROS, 1., 4);
     //let cube = Cube::new_threads(ZEROS, 1., 2000);
     println!("start run");
     let res = cube.run(&mesh);
