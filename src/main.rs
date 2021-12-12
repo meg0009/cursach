@@ -97,6 +97,44 @@ impl Polygon {
             ny: n.clone(),
             nz: n.clone(),
         }
+
+        /*let mut nx = 0.;
+        let mut ny = 0.;
+        let mut nz = 0.;
+
+        let vert = [triangle.x, triangle.y, triangle.z];
+        for i in 0..3 {
+            let v_curr = vert[i];
+            let v_next = vert[(i + 1) % 3];
+            nx += (v_next[1] - v_curr[1]) * (v_curr[2] + v_next[2]);
+            ny += (v_next[2] - v_curr[2]) * (v_curr[0] + v_next[0]);
+            nz += (v_next[0] - v_curr[0]) * (v_curr[1] + v_next[1]);
+        }
+
+        //метод ньюэла newell
+        /*let mut nx = (triangle.y[1] - triangle.x[1]) * (triangle.x[2] + triangle.y[2]);
+        nx += (triangle.z[1] - triangle.x[1]) * (triangle.y[2] + triangle.z[2]);
+        nx += (triangle.x[1] - triangle.z[1]) * (triangle.z[2] + triangle.x[2]);
+        let mut ny = (triangle.y[2] - triangle.x[2]) * (triangle.x[0] + triangle.y[0]);
+        nx += (triangle.z[2] - triangle.y[2]) * (triangle.y[0] + triangle.z[0]);
+        nx += (triangle.x[2] - triangle.z[2]) * (triangle.z[0] + triangle.x[0]);
+        let mut nz = (triangle.y[0] - triangle.x[0]) * (triangle.x[1] + triangle.y[1]);
+        nx += (triangle.z[0] - triangle.y[0]) * (triangle.y[1] + triangle.z[1]);
+        nx += (triangle.x[0] - triangle.z[0]) * (triangle.z[1] + triangle.x[1]);*/
+        let l = na::vector![nx, ny, nz].norm();
+        nx /= -l;
+        println!("nx = {:?}", nx);
+        ny /= -l;
+        println!("ny = {:?}", ny);
+        nz /= -l;
+        println!("nz = {:?}", nz);
+        Polygon {
+            normal: na::vector![nx, ny, nz],
+            triangle: triangle,
+            nx: na::vector![nx, ny, nz],
+            ny: na::vector![nx, ny, nz],
+            nz: na::vector![nx, ny, nz],
+        }*/
     }
 
     fn new_all(
@@ -239,7 +277,56 @@ impl LocalPolygon {
     }
 
     fn get_local_point(&self, x: na::Vector3<f64>) -> na::Vector3<f64> {
-        self.matrix_a_1 * x + self.x0
+        //println!("{:?}", self.poly.triangle);
+        let res = self.matrix_a_1 * x + self.x0;
+        /*let poly = &self.poly;
+        let e1 = self.matrix_a_1 * self.e_1;
+        let e2 = self.matrix_a_1 * self.e_2;
+        let e3 = self.matrix_a_1 * self.e_3;
+        println!("{}, {}, {}", e1, e2, e3);
+        let angel_x = e1.angle(&e2);
+        let angel_y = e3.angle(&e1);
+        let angel_z = e2.angle(&e3);
+        let angel_x_2 = angel_x / 2.;
+        let angel_y_2 = angel_y / 2.;
+        let angel_z_2 = angel_z / 2.;
+        let e_xy = na::Matrix4::new_rotation(na::vector![0., 0., 0.5 * angel_x_2]).transform_vector(&e1);
+        let e_yx = na::Matrix4::new_rotation(na::vector![0., 0., 1.5 * angel_y_2]).transform_vector(&e3);
+        let e_yz = na::Matrix4::new_rotation(na::vector![0., 0., 0.5 * angel_y_2]).transform_vector(&e3);
+        let e_zy = na::Matrix4::new_rotation(na::vector![0., 0., 1.5 * angel_z_2]).transform_vector(&e2);
+        let e_zx = na::Matrix4::new_rotation(na::vector![0., 0., 0.5 * angel_z_2]).transform_vector(&e2);
+        let e_xz = na::Matrix4::new_rotation(na::vector![0., 0., 1.5 * angel_x_2]).transform_vector(&e1);
+        println!("{}, {}, {}, {}, {}, {}", e_xy, e_yx, e_yz, e_zy, e_zx, e_xz);
+        let xy = e_xy / 2.;
+        let yz = e_yz / 2.;
+        let xz = e_zx / 2.;
+        let tx = poly.triangle.x;
+        let ty = poly.triangle.y;
+        let tz = poly.triangle.z;
+        let x = res;
+
+        let a1 = (tx[0] - x[0]) * (ty[1] - tx[1]) - (ty[0] - tx[0]) * (tx[1] - x[1]);
+        let b1 = (ty[0] - x[0]) * (xy[1] - tx[1]) - (xy[0] - ty[0]) * (ty[1] - x[1]);
+        let c1 = (xy[0] - x[0]) * (tx[1] - xy[1]) - (tx[0] - xy[0]) * (xy[1] - x[1]);
+
+        let a2 = (ty[0] - x[0]) * (tz[1] - ty[1]) - (tz[0] - ty[0]) * (ty[1] - x[1]);
+        let b2 = (tz[0] - x[0]) * (yz[1] - tz[1]) - (yz[0] - tz[0]) * (tz[1] - x[1]);
+        let c2 = (yz[0] - x[0]) * (ty[1] - yz[1]) - (ty[0] - yz[0]) * (yz[1] - x[1]);
+
+        let a3 = (tz[0] - x[0]) * (tx[1] - tz[1]) - (tz[0] - tx[0]) * (tx[1] - x[1]);
+        let b3 = (tx[0] - x[0]) * (xz[1] - tz[1]) - (xz[0] - tx[0]) * (tx[1] - x[1]);
+        let c3 = (xz[0] - x[0]) * (tz[1] - xz[1]) - (tz[0] - xz[0]) * (xz[1] - x[1]);
+
+        if a1.signum() == b1.signum() && b1.signum() == c1.signum() {
+            InOrOut::Out(res)
+        } else if a2.signum() == b2.signum() && b2.signum() == c2.signum() {
+            InOrOut::Out(res)
+        } else if a3.signum() == b3.signum() && b3.signum() == c3.signum() {
+            InOrOut::Out(res)
+        } else {
+            InOrOut::In(res)
+        }*/
+        res
     }
 
     fn get_from_local(&self, x: na::Vector3<f64>) -> na::Vector3<f64> {
@@ -888,7 +975,7 @@ impl Cube {
         Mesh::new(res)/*.set_normal_vertex()*/
     }
 
-    fn run_threads(&self, mesh: &Mesh) -> Mesh {
+    fn _run_threads(&self, mesh: &Mesh) -> Mesh {
         use std::thread as thd;
         use std::os::unix::thread::JoinHandleExt;
         //let mut res = Vec::with_capacity(self.size_edge * self.size_edge * 6 * 2);
@@ -1331,13 +1418,93 @@ enum InOrOut {
     //находится в зоне 1
     In(na::Vector1<f64>),
     //находится в зоне 2
-    Out(na::Vector1<f64>),
+    Out(na::Vector1<f64>, na::Vector3<f64>, na::Vector3<f64>),
+}
+
+struct Sphere {
+    x0: na::Vector3<f64>,
+    r: f64,
+}
+
+impl std::cmp::PartialEq for Sphere {
+    fn eq(&self, other: &Self) -> bool {
+        self.x0 == other.x0 && self.r == other.r
+    }
+}
+
+impl Sphere {
+    fn new() -> Self {
+        Sphere {
+            x0: ZEROS,
+            r: 4.,
+        }
+    }
+
+    fn new_with_x0_r(x0: na::Vector3<f64>, r: f64) -> Self {
+        Sphere {
+            x0: x0,
+            r: r,
+        }
+    }
+
+    fn run(&self, mesh: &Mesh) -> Mesh {
+        let mut res = Vec::with_capacity(32);
+        for p in mesh.mesh.iter() {
+            let x = p.triangle.x;
+            let y = p.triangle.y;
+            let z = p.triangle.z;
+            let mut xy = (x + y);
+            let mut yz = (y + z);
+            let mut xz = (x + z);
+            xy = xy / xy.norm() * self.r;
+            yz = yz / yz.norm() * self.r;
+            xz = xz / xz.norm() * self.r;
+            res.push(Polygon::new(
+                &ZEROS,
+                Triangle::new(
+                    x,
+                    xy,
+                    xz
+                )
+            ));
+            res.push(Polygon::new(
+                &ZEROS,
+                Triangle::new(
+                    xy,
+                    y,
+                    yz
+                )
+            ));
+            res.push(Polygon::new(
+                &ZEROS,
+                Triangle::new(
+                    yz,
+                    z,
+                    xz
+                )
+            ));
+            res.push(Polygon::new(
+                &ZEROS,
+                Triangle::new(
+                    yz,
+                    xy,
+                    xz
+                )
+            ));
+
+        }
+        Mesh::new(res).set_normal_vertex()
+    }
 }
 
 fn main() {
     let mut in_file = File::open("../123.stl").unwrap();
     let stl = stl_io::read_stl(&mut in_file).unwrap();
     let mesh = Mesh::from(&stl);
+
+    let sphere = Sphere::new();
+
+    let mesh = sphere.run(&mesh);
 
     /*let mut out_file = File::create("../2.stl").unwrap();
     stl_io::write_stl(
@@ -1354,7 +1521,7 @@ fn main() {
     .unwrap();*/
 
     println!("make cube");
-    let cube = Cube::new(ZEROS, 1., 4);
+    let cube = Cube::new(ZEROS, 1., 24);
     //let cube = Cube::new_threads(ZEROS, 1., 2000);
     println!("start run");
     let res = cube.run(&mesh);
