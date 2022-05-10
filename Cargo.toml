@@ -8,5 +8,5 @@ edition = "2021"
 
 [dependencies]
 stl_io = "0.6.0"
-nalgebra = "*"
+nalgebra = "0.31.0"
 libc = "*"
