@@ -14,7 +14,7 @@ use std::fs::File;
 
 const ZEROS: na::Vector3<f64> = na::vector![0., 0., 0.];
 
-static ENABLE_JOIN: bool = false;
+static ENABLE_JOIN: bool = true;
 
 /*enum InOrOut {
     //находится в зоне 1
@@ -70,8 +70,8 @@ fn main() {
     let stl = stl_io::read_stl(&mut in_file).unwrap();
     let mesh = mesh::Mesh::from(&stl);
 
-    let sphere = Sphere::new(&ZEROS, 4.);
-    let mesh = sphere.run(&mesh);
+    /*let sphere = Sphere::new(&ZEROS, 4.);
+    let mesh = sphere.run(&mesh);*/
 
     println!("make cube");
     let cube = cube::Cube::new(ZEROS /* + na::Vector3::new(0.5, 0., 0.)*/, 1., 25);

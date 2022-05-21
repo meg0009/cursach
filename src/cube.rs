@@ -1,5 +1,5 @@
 use crate::join::{self, get_mn, InOrOut};
-use crate::local::{gamma, LocalPolygon, Points, U, join_local};
+use crate::local::{gamma, gamma_d, join_local, LocalPolygon, Points, U};
 use crate::mesh::Mesh;
 use crate::triangle::{IndexedPolygon, IndexedTriangle, Polygon};
 use crate::vertex::Vertex;
@@ -182,8 +182,16 @@ impl Cube {
                         }
                     };
                     let another_poly = mesh.find_neighbor(&old_poly, i1, i2).unwrap();
-                    let b = crate::join::get_inside_point(&another_poly, mesh, i1, i2);
-                    let (m, n) = get_mn(&x, &a, &old_poly, &b, &another_poly, mesh, i1, i2);
+                    let b = crate::join::get_inside_point(
+                        &old_poly,
+                        mesh,
+                        i1,
+                        i2,
+                        &local_poly.to_local(&x),
+                    ); // b - в глобальной системе координат
+                       // a - в локальной системе координат local_poly
+                       // x - в глобальной системе координат
+                    let (m, n) = get_mn(&x, &b, &old_poly, &another_poly, mesh, i1, i2);
                     let points = Points::from(&local_poly);
                     let u = U::from_local(&local_poly, &old_poly, mesh);
                     let local_m = local_poly.to_local(&m);
@@ -192,7 +200,19 @@ impl Cube {
                         local_m[1],
                         gamma(local_m[0], local_m[1], &points, &u),
                     );
+                    let local_m_d = gamma_d(
+                        local_m[0],
+                        local_m[1],
+                        &points,
+                        &u,
+                        &local_poly.to_local(&(m - b)),
+                    );
                     let new_m = local_poly.from_local(&new_local_m);
+
+                    let o_z = na::Vector3::new(0., 0., 1.);
+                    let local_z = local_poly.get_e3();
+                    let local_angle = o_z.angle(&local_z);
+                    
                     let another_local_poly = LocalPolygon::from(&Polygon::from_indexed_polygon(
                         &another_poly,
                         mesh.vertexes(),
@@ -205,10 +225,89 @@ impl Cube {
                         local_n[1],
                         gamma(local_n[0], local_n[1], &points, &u),
                     );
+                    let local_n_d = gamma_d(
+                        local_n[0],
+                        local_n[1],
+                        &points,
+                        &u,
+                        &another_local_poly.to_local(&(m - b)),
+                    );
+
+                    /*let another_local_z = another_local_poly.get_e3();
+                    let another_local_angle = o_z.angle(&another_local_z);*/
+
                     let new_n = another_local_poly.from_local(&new_local_n);
-                    let abs_local = join_local::JoinLocalPolygon::from((mesh.vertexes()[i1].pos(), mesh.vertexes()[i2].pos(), &old_poly.norm(), &another_poly.norm()));
+                    let abs_local = join_local::JoinLocalPolygon::from((
+                        mesh.vertexes()[i1].pos(),
+                        mesh.vertexes()[i2].pos(),
+                        &old_poly.norm(),
+                        &another_poly.norm(),
+                    ));
                     let local_m = abs_local.to_local(&new_m);
                     let local_n = abs_local.to_local(&new_n);
+                    /*let new_local_z = abs_local.get_e3();
+
+                    let new_local_angle = local_angle - o_z.angle(&new_local_z);
+                    let new_m_d = (local_m_d - new_local_angle.tan())
+                        / (1. + local_m_d * new_local_angle.tan());
+                    let new_local_angle = another_local_angle - o_z.angle(&new_local_z);
+                    let new_n_d = (local_n_d - new_local_angle.tan())
+                        / (1. + local_n_d * new_local_angle.tan());
+
+                    let local_zx = na::Vector3::new(local_z[0], local_z[1], 0.);
+                    let another_local_zx = na::Vector3::new(another_local_z[0], another_local_z[1], 0.);
+                    let new_local_zx = na::Vector3::new(new_local_z[0], new_local_z[1], 0.);
+
+                    let new_local_angle = local_zx.angle(&new_local_zx);
+                    let new_m_d = (new_m_d - new_local_angle.tan())
+                        / (1. + new_m_d * new_local_angle.tan());
+                    let new_local_angle = another_local_zx.angle(&new_local_zx);
+                    let new_n_d = (new_n_d - new_local_angle.tan())
+                        / (1. + new_n_d * new_local_angle.tan());*/
+
+                    let bm_abs_local = abs_local.to_local(&(b - m));
+                    let bn_abs_local = abs_local.to_local(&(b - n));
+
+                    //let new_m_d = local_m_d.0 * bm_abs_local[0] + local_m_d.1 * bm_abs_local[1];
+                    //let new_n_d = local_n_d.0 * bn_abs_local[0] + local_n_d.1 * bn_abs_local[1];
+                    let new_m_d = local_m_d;
+                    let new_n_d = local_n_d;
+                    /*let n_old = old_poly.norm();
+                    let n_another = another_poly.norm();
+                    let nn = abs_local.get_e3();
+                    let angle_old = nn.angle(&n_old);
+                    let angle_another = nn.angle(&n_another);
+                    let new_m_d = (local_m_d - angle_old.tan()) / (1. + local_m_d * angle_old.tan());
+                    let new_n_d = (local_n_d - angle_another.tan()) / (1. + local_n_d * angle_another.tan());*/
+
+                    let local_x = abs_local.to_local(&x);
+
+                    // исправления - gamma ниже считает всё в NaN а также возможно выше не правильно пересчитываются в новую локальную систему координат производные m_d и n_d
+                    let new_local_x = na::Vector3::new(
+                        local_x[0],
+                        local_x[1],
+                        join_local::gamma(
+                            //local_x[0], local_x[1], &local_m, &local_n, local_m[2], local_n[2],
+                            &local_x,
+                            &abs_local.to_local(&m),
+                            &abs_local.to_local(&n),
+                            local_m[2],
+                            local_n[2],
+                            /*
+                            -local_x[2] + join_local::gamma(
+                            local_x[0], local_x[1], &abs_local.to_local(&m), &abs_local.to_local(&n), local_m[2], local_n[2],
+                            new_m_d, new_n_d,
+                            ),
+                             */
+                            new_m_d,
+                            new_n_d,
+                        ),
+                    );
+                    let new_x = abs_local.from_local(&new_local_x);
+                    vertexes.push(Vertex::new(&new_x));
+                    //vertexes.push(Vertex::new(&b));
+                    //vertexes.push(Vertex::new(&m));
+                    //let new_m_d =
                 }
                 InOrOut::In => {
                     let points = Points::from(&local_poly);

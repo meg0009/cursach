@@ -40,6 +40,10 @@ impl LocalPolygon {
         )
     }
 
+    fn sign(p1: &na::Vector3<f64>, p2: &na::Vector3<f64>, p3: &na::Vector3<f64>) -> f64 {
+        (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+    }
+
     pub fn inside_triangle(
         &self,
         x: na::Vector3<f64>,
@@ -61,6 +65,16 @@ impl LocalPolygon {
 
         rez % 2 != 0 && local[1].signum() == z[1].signum() && local[1].abs() <= z[1].abs()
             || local[1].abs() <= EPS && local[0] <= y[0] && local[0] > 0.
+        /*let local = self.to_local(vec);
+
+        let d1 = Self::sign(&local, &x, &y);
+        let d2 = Self::sign(&local, &y, &z);
+        let d3 = Self::sign(&local, &z, &x);
+
+        let has_neg = d1 < 0. || d2 < 0. || d3 < 0.;
+        let has_pos = d1 > 0. || d2 > 0. || d3 > 0.;
+
+        !(has_neg && has_pos)*/
     }
 
     pub fn get_poly(&self) -> &Polygon {
@@ -75,6 +89,10 @@ impl LocalPolygon {
         let y21 = x[1] - y[1];
         let x21 = x[0] - y[0];
         (local[1] - y[1]) / y21 * x21 + y[0]
+    }
+
+    pub fn get_e3(&self) -> na::Vector3<f64> {
+        self.e3.clone()
     }
 }
 
@@ -176,6 +194,68 @@ impl Points {
         (a - pi[0]) * (pj[1] - pi[1]) - (b - pi[1]) * (pj[0] - pi[0])
     }
 
+    // производная по alpha
+    fn get_l_a(&self, i: i32, j: i32) -> f64 {
+        let pi = match i {
+            1 => &self.p1,
+            2 => &self.p2,
+            3 => &self.p3,
+            4 => &self.p4,
+            5 => &self.p5,
+            6 => &self.p6,
+            7 => &self.p7,
+            8 => &self.p8,
+            9 => &self.p9,
+            10 => &self.p10,
+            _ => unreachable!(),
+        };
+        let pj = match j {
+            1 => &self.p1,
+            2 => &self.p2,
+            3 => &self.p3,
+            4 => &self.p4,
+            5 => &self.p5,
+            6 => &self.p6,
+            7 => &self.p7,
+            8 => &self.p8,
+            9 => &self.p9,
+            10 => &self.p10,
+            _ => unreachable!(),
+        };
+        pj[1] - pi[1]
+    }
+
+    // производная по beta
+    fn get_l_b(&self, i: i32, j: i32) -> f64 {
+        let pi = match i {
+            1 => &self.p1,
+            2 => &self.p2,
+            3 => &self.p3,
+            4 => &self.p4,
+            5 => &self.p5,
+            6 => &self.p6,
+            7 => &self.p7,
+            8 => &self.p8,
+            9 => &self.p9,
+            10 => &self.p10,
+            _ => unreachable!(),
+        };
+        let pj = match j {
+            1 => &self.p1,
+            2 => &self.p2,
+            3 => &self.p3,
+            4 => &self.p4,
+            5 => &self.p5,
+            6 => &self.p6,
+            7 => &self.p7,
+            8 => &self.p8,
+            9 => &self.p9,
+            10 => &self.p10,
+            _ => unreachable!(),
+        };
+        pj[0] - pi[0]
+    }
+
     pub fn get_fi(
         &self,
         a: f64,
@@ -205,6 +285,60 @@ impl Points {
             / (self.get_l(pa, pb, first.0, first.1)
                 * self.get_l(pa, pb, second.0, second.1)
                 * self.get_l(pa, pb, third.0, third.1))
+    }
+
+    // производная (по alpha, по beta)
+    pub fn get_fi_d(
+        &self,
+        a: f64,
+        b: f64,
+        first: (i32, i32),
+        second: (i32, i32),
+        third: (i32, i32),
+        i: i32,
+    ) -> (f64, f64) {
+        let pi = match i {
+            1 => &self.p1,
+            2 => &self.p2,
+            3 => &self.p3,
+            4 => &self.p4,
+            5 => &self.p5,
+            6 => &self.p6,
+            7 => &self.p7,
+            8 => &self.p8,
+            9 => &self.p9,
+            10 => &self.p10,
+            _ => unreachable!(),
+        };
+        let (pa, pb) = (pi[0], pi[1]);
+        let w = self.get_l(pa, pb, first.0, first.1)
+            * self.get_l(pa, pb, second.0, second.1)
+            * self.get_l(pa, pb, third.0, third.1);
+        let mut res_a = self.get_l_a(first.0, first.1)
+            * self.get_l(a, b, second.0, second.1)
+            * self.get_l(a, b, third.0, third.1)
+            / w;
+        res_a += self.get_l(a, b, first.0, first.1)
+            * self.get_l_a(second.0, second.1)
+            * self.get_l(a, b, third.0, third.1)
+            / w;
+        res_a += self.get_l(a, b, first.0, first.1)
+            * self.get_l(a, b, second.0, second.1)
+            * self.get_l_a(third.0, third.1)
+            / w;
+        let mut res_b = self.get_l_b(first.0, first.1)
+            * self.get_l(a, b, second.0, second.1)
+            * self.get_l(a, b, third.0, third.1)
+            / w;
+        res_b += self.get_l(a, b, first.0, first.1)
+            * self.get_l_b(second.0, second.1)
+            * self.get_l(a, b, third.0, third.1)
+            / w;
+        res_b += self.get_l(a, b, first.0, first.1)
+            * self.get_l(a, b, second.0, second.1)
+            * self.get_l_b(third.0, third.1)
+            / w;
+        (res_a, res_b)
     }
 }
 
@@ -293,4 +427,41 @@ pub fn gamma(a: f64, b: f64, p: &Points, u: &U) -> f64 {
         + u.u8 * fi8
         + u.u9 * fi9
         + u.u10 * fi10
+}
+
+// производная
+pub fn gamma_d(a: f64, b: f64, p: &Points, u: &U, direction: &na::Vector3<f64>) -> f64 {
+    let dir_norm = direction.normalize();
+    let fi1 = p.get_fi_d(a, b, (2, 3), (5, 8), (4, 9), 1);
+    let fi2 = p.get_fi_d(a, b, (1, 3), (4, 7), (5, 6), 2);
+    let fi3 = p.get_fi_d(a, b, (1, 2), (6, 9), (7, 8), 3);
+    let fi4 = p.get_fi_d(a, b, (1, 3), (2, 3), (5, 8), 4);
+    let fi5 = p.get_fi_d(a, b, (1, 3), (2, 3), (4, 7), 5);
+    let fi6 = p.get_fi_d(a, b, (1, 2), (1, 3), (4, 7), 6);
+    let fi7 = p.get_fi_d(a, b, (1, 2), (1, 3), (6, 9), 7);
+    let fi8 = p.get_fi_d(a, b, (1, 2), (2, 3), (6, 9), 8);
+    let fi9 = p.get_fi_d(a, b, (1, 2), (2, 3), (5, 8), 9);
+    let fi10 = p.get_fi_d(a, b, (1, 2), (2, 3), (1, 3), 10);
+    let gamma_a = u.u1 * fi1.0
+        + u.u2 * fi2.0
+        + u.u3 * fi3.0
+        + u.u4 * fi4.0
+        + u.u5 * fi5.0
+        + u.u6 * fi6.0
+        + u.u7 * fi7.0
+        + u.u8 * fi8.0
+        + u.u9 * fi9.0
+        + u.u10 * fi10.0;
+    let gamma_b = u.u1 * fi1.1
+        + u.u2 * fi2.1
+        + u.u3 * fi3.1
+        + u.u4 * fi4.1
+        + u.u5 * fi5.1
+        + u.u6 * fi6.1
+        + u.u7 * fi7.1
+        + u.u8 * fi8.1
+        + u.u9 * fi9.1
+        + u.u10 * fi10.1;
+    gamma_a * dir_norm[0] + gamma_b * dir_norm[1]
+    //(gamma_a, gamma_b)
 }
