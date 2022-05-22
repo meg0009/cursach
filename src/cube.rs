@@ -270,17 +270,27 @@ impl Cube {
 
                     //let new_m_d = local_m_d.0 * bm_abs_local[0] + local_m_d.1 * bm_abs_local[1];
                     //let new_n_d = local_n_d.0 * bn_abs_local[0] + local_n_d.1 * bn_abs_local[1];
-                    let new_m_d = local_m_d;
-                    let new_n_d = local_n_d;
-                    /*let n_old = old_poly.norm();
+                    //let new_m_d = local_m_d;
+                    //let new_n_d = local_n_d;
+                    let n_old = old_poly.norm();
                     let n_another = another_poly.norm();
                     let nn = abs_local.get_e3();
                     let angle_old = nn.angle(&n_old);
                     let angle_another = nn.angle(&n_another);
                     let new_m_d = (local_m_d - angle_old.tan()) / (1. + local_m_d * angle_old.tan());
-                    let new_n_d = (local_n_d - angle_another.tan()) / (1. + local_n_d * angle_another.tan());*/
+                    let new_n_d = (local_n_d - angle_another.tan()) / (1. + local_n_d * angle_another.tan());
 
-                    let local_x = abs_local.to_local(&x);
+                    let local_x = local_poly.to_local(&x);
+                    let points = Points::from(&local_poly);
+                    let u = U::from_local(&local_poly, &old_poly, mesh);
+                    let new_local_x = na::Vector3::new(
+                        local_x[0],
+                        local_x[1],
+                        gamma(local_x[0], local_x[1], &points, &u),
+                    );
+
+                    let local_x = abs_local.to_local(&local_poly.from_local(&new_local_x));
+                    //let local_x = abs_local.to_local(&x);
 
                     // исправления - gamma ниже считает всё в NaN а также возможно выше не правильно пересчитываются в новую локальную систему координат производные m_d и n_d
                     let new_local_x = na::Vector3::new(

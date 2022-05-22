@@ -65,6 +65,9 @@ impl
     }
 }
 
+static mut A: i32 = 0;
+static mut B: i32 = 0;
+
 pub fn gamma(
     x: &na::Vector3<f64>,
     m: &na::Vector3<f64>,
@@ -93,8 +96,6 @@ pub fn gamma(
         panic!("ну здарова");
     }*/
 
-    let m = na::Vector2::new(m[0], m[1]);
-    let n = na::Vector2::new(n[0], n[1]);
     let d = m.metric_distance(&n);
 
     /*let mn_x = ((n[0] - m[0]) * x[0] / (n[1] - m[1]) + x[1]
@@ -104,6 +105,7 @@ pub fn gamma(
         - (m[1] - m[0] * (n[1] - m[1]) / (n[0] - m[0])))
         / ((n[1] - m[1]) / (n[0] - m[0]) + (n[0] - m[0]) / (n[1] - m[1]));
     let mn_y = -(n[0] - m[0]) * (mn_x - x[0]) / (n[1] - m[1]) + x[1];
+    let mn_z = (mn_y - m[1]) * (n[2] - m[2]) / (n[1] - m[1]) + m[2];
     //let mn_y = mn_x * (n[1] - m[1]) / (n[0] - m[0]) + m[1] - m[0] * (n[1] - m[1]) / (n[0] - m[0]);
 
     if !mn_x.is_nan() {
@@ -111,19 +113,41 @@ pub fn gamma(
     }
 
     let xx = if mn_x.is_nan() {
-        na::Vector2::new(m[0], x[1])
+        unsafe{
+            A += 1;
+        }
+        na::Vector3::new(m[0], x[1], m[2])
     } else {
-        na::Vector2::new(mn_x, mn_y)
+        unsafe{
+            B += 1;
+        }
+        na::Vector3::new(mn_x, mn_y, mn_z)
     };
+    unsafe{
+        println!("A: {}, B: {}", A, B);
+    }
     //let xx = na::Vector2::new(m[0], x[1]);
-    let dx = m.metric_distance(&xx);
-    let t = dx / d;
+    //let dx = m.metric_distance(&xx);
+    let dx = n.metric_distance(&xx);
+    let t = if d > dx {
+        dx / d
+    } else {
+        d / dx
+    };
 
-    //let fd_m = fd_m;
-    let c0 = f_m;
+    /*let c0 = f_m;
     let c1 = fd_m;
-    let c3 = (fd_n - 2. * f_n + f_m + fd_m) * 0.5;
+    let c3 = fd_n - 2. * f_n + 2. * f_m + fd_m;
     let c2 = f_n - c3 - f_m - fd_m;
 
+    c0 + c1 * t + c2 * t.powi(2) + c3 * t.powi(3)*/
+    let c0 = f_n;
+    let c1 = fd_n;
+    let c3 = fd_m - 2. * f_m + 2. * f_n + fd_n;
+    let c2 = f_m - c3 - f_n - fd_n;
+
     c0 + c1 * t + c2 * t.powi(2) + c3 * t.powi(3)
+    /*let c0 = f_m;
+    let c1 = f_n - f_m;
+    c0 + c1 * t*/
 }
